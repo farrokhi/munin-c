@@ -41,10 +41,10 @@ static int verbose = 0;
 static bool extension_stripping = false;
 
 static char* host = "";
-static char* plugin_dir = PLUGINDIR;
+static char* plugin_dir = "/usr/local/etc/munin/plugins";
 static char* spoolfetch_dir = "";
 static char* client_ip = "-";
-static char* pluginconf_dir = "/etc/munin/plugin-conf.d";
+static char* pluginconf_dir = "/usr/local/etc/munin/plugin-conf.d";
 
 static int handle_connection();
 
@@ -226,7 +226,7 @@ static void setenvvars_munin() {
 	xsetenv("MUNIN_STATEFILE", "/dev/null", no);
 
 	/* That's where plugins should live */
-	xsetenv("MUNIN_LIBDIR", "/usr/share/munin", no);
+	xsetenv("MUNIN_LIBDIR", "/usr/local/share/munin", no);
 }
 
 /* in-place */
@@ -467,23 +467,6 @@ static void setenvvars_conf(char* current_plugin_name) {
 	}
 	}
 
-	/* setuid/gid */
-	if (geteuid() == 0) {
-		/* We *are* root */
-		int ret_val;
-		ret_val = setgid(pconf.gid);
-		if ((ret_val =! 0) || (getgid() != pconf.gid)) {
-				perror("gid not changed by setgid");
-				abort();
-		}
-
-		/* Change UID *after* GID, otherwise cannot change anymore */
-		ret_val = setuid(pconf.uid);
-		if ((ret_val != 0) || (getuid() != pconf.uid)) {
-			perror("uid not changed by setuid");
-			abort();
-		}
-	}
 	}
 	}
 }
@@ -573,7 +556,11 @@ static int handle_connection() {
 			/* Now is the time to set environnement */
 			setenvvars_conf(arg);
 			argv[0] = arg;
-			argv[1] = cmd;
+			if (strcmp(cmd, "fetch") == 0) {
+				argv[1] = NULL;
+			} else {
+				argv[1] = cmd;
+			}
 
 			/* Using posix_spawnp() here instead of fork() since we will
 			 * do a little more than a mere exec --> setenvvars_conf() */
